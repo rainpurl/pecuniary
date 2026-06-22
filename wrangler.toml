@@ -1,0 +1,15 @@
+name = "pecuniary"
+pages_build_output_dir = "public"
+compatibility_date = "2025-06-01"
+
+# KV namespace for storing Plaid access tokens and manual accounts.
+# Create it with:  npx wrangler kv namespace create PECUNIARY_KV
+# then paste the returned id below AND bind it in the Cloudflare dashboard
+# (Pages project -> Settings -> Functions -> KV namespace bindings).
+[[kv_namespaces]]
+binding = "PECUNIARY_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# NOTE: secrets (PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV) are NOT defined here.
+# This file is committed to git. Set them as encrypted env vars in the
+# Cloudflare Pages dashboard, or with `wrangler pages secret put`. See README.

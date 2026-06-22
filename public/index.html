@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Pecuniary</title>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<style>
+  :root {
+    --paper:#F4F5F2; --ink:#1B1D1A; --muted:#6B6F6A; --line:#E3E4DF;
+    --asset:#1F6E4A; --liability:#A1421F; --accent:#155E6B; --accent-ink:#0C3942;
+    --card:#FBFBF9;
+    --sans: ui-sans-serif, system-ui, "Inter", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans);
+    line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:880px; margin:0 auto; padding:40px 22px 80px; }
+  .eyebrow { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin:0 0 6px; }
+  h1 { font-size:20px; font-weight:600; letter-spacing:-.01em; margin:0; }
+  .num { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+  /* hero net worth */
+  .hero { margin:28px 0 34px; }
+  .hero .label { font-size:13px; color:var(--muted); margin-bottom:4px; }
+  .hero .nw { font-family:var(--mono); font-variant-numeric:tabular-nums;
+    font-size:clamp(34px,7vw,52px); font-weight:600; letter-spacing:-.02em;
+    border-bottom:2px solid var(--accent); display:inline-block; padding-bottom:6px; }
+  .subtotals { display:flex; gap:28px; margin-top:16px; flex-wrap:wrap; }
+  .subtotals .st { font-size:13px; color:var(--muted); }
+  .subtotals .st .v { font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:16px; display:block; margin-top:2px; }
+  .v.asset { color:var(--asset); } .v.liability { color:var(--liability); }
+
+  /* controls */
+  .controls { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 30px; }
+  button { font-family:var(--sans); font-size:14px; cursor:pointer; border-radius:8px; border:1px solid var(--line); }
+  .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); padding:9px 16px; font-weight:500; }
+  .btn-primary:hover { background:var(--accent-ink); }
+  .btn-ghost { background:transparent; color:var(--ink); padding:9px 14px; }
+  .btn-ghost:hover { border-color:var(--ink); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ledger */
+  .group-title { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted);
+    margin:26px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  .row { display:flex; align-items:baseline; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .row .nm { flex:1; min-width:0; }
+  .row .nm .name { font-size:15px; }
+  .row .nm .meta { font-size:12px; color:var(--muted); }
+  .row .amt { font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:15px; white-space:nowrap; }
+  .amt.asset { color:var(--asset); } .amt.liability { color:var(--liability); }
+  .tag { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+    border:1px solid var(--line); border-radius:4px; padding:1px 5px; margin-left:8px; }
+  .row .edit { background:none; border:none; color:var(--accent); font-size:12px; padding:2px 6px; cursor:pointer; }
+
+  .empty { color:var(--muted); font-size:14px; padding:18px 0; }
+  .err { background:#FBEFE9; border:1px solid #E9C9BB; color:#7A2E12; font-size:13px;
+    border-radius:8px; padding:10px 12px; margin:18px 0; }
+
+  /* manual form */
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-top:34px; }
+  .panel h2 { font-size:14px; font-weight:600; margin:0 0 4px; }
+  .panel p { font-size:12.5px; color:var(--muted); margin:0 0 14px; }
+  .form { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .field input, .field select { font-family:var(--sans); font-size:14px; padding:8px 10px;
+    border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+  .field.name input { width:200px; max-width:48vw; }
+  .field.value input { width:130px; font-family:var(--mono); }
+  .foot { font-size:12px; color:var(--muted); margin-top:30px; }
+  @media (max-width:560px){ .field.name input { width:100%; } .form { gap:12px; } }
+  @media (prefers-reduced-motion: no-preference){ .btn-primary, .btn-ghost { transition:.12s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Private ledger</p>
+  <h1>Pecuniary</h1>
+
+  <section class="hero">
+    <div class="label">Net worth</div>
+    <div class="nw num" id="networth">—</div>
+    <div class="subtotals">
+      <div class="st">Assets<span class="v asset num" id="assets">—</span></div>
+      <div class="st">Liabilities<span class="v liability num" id="liabilities">—</span></div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <button class="btn-primary" id="connect">Connect an account</button>
+    <button class="btn-ghost" id="refresh">Refresh</button>
+  </div>
+
+  <div id="errors"></div>
+  <div id="ledger"></div>
+
+  <section class="panel">
+    <h2>Manual accounts</h2>
+    <p>For anything Plaid can't reach — Fidelity, Public.com, Gainbridge, Alphaeon. Log into each, then update its value here.</p>
+    <form class="form" id="manualForm">
+      <input type="hidden" id="m_id" />
+      <div class="field name">
+        <label for="m_name">Account</label>
+        <input id="m_name" required placeholder="Fidelity Roth" />
+      </div>
+      <div class="field">
+        <label for="m_kind">Type</label>
+        <select id="m_kind">
+          <option value="asset">Asset</option>
+          <option value="liability">Liability</option>
+        </select>
+      </div>
+      <div class="field value">
+        <label for="m_value">Value (USD)</label>
+        <input id="m_value" type="number" step="0.01" required placeholder="0.00" />
+      </div>
+      <button class="btn-primary" type="submit" id="m_save">Save</button>
+      <button class="btn-ghost" type="button" id="m_cancel" style="display:none">Cancel</button>
+    </form>
+  </section>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+const fmt = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
+const $ = (id) => document.getElementById(id);
+
+async function loadData() {
+  const r = await fetch("/api/data");
+  const d = await r.json();
+  render(d);
+}
+
+function render(d) {
+  $("networth").textContent = fmt.format(d.summary.net_worth);
+  $("assets").textContent = fmt.format(d.summary.assets);
+  $("liabilities").textContent = fmt.format(d.summary.liabilities);
+
+  // connection errors (e.g. a link needs re-auth)
+  const eb = $("errors");
+  eb.innerHTML = "";
+  if (d.errors && d.errors.length) {
+    const div = document.createElement("div");
+    div.className = "err";
+    div.textContent = "Needs attention: " + d.errors.map(e => e.institution + " (" + e.error + ")").join(", ")
+      + ". Reconnect it via “Connect an account.”";
+    eb.appendChild(div);
+  }
+
+  const ledger = $("ledger");
+  ledger.innerHTML = "";
+  if (!d.accounts.length) {
+    ledger.innerHTML = '<p class="empty">No accounts yet. Connect a bank, or add a manual account below.</p>';
+    return;
+  }
+  for (const kind of ["asset", "liability"]) {
+    const rows = d.accounts.filter(a => a.kind === kind);
+    if (!rows.length) continue;
+    const t = document.createElement("div");
+    t.className = "group-title";
+    t.textContent = kind === "asset" ? "Assets" : "Liabilities";
+    ledger.appendChild(t);
+    for (const a of rows) ledger.appendChild(rowEl(a, kind));
+  }
+}
+
+function rowEl(a, kind) {
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const nm = document.createElement("div");
+  nm.className = "nm";
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = a.name;
+  if (a.source === "manual") {
+    const tag = document.createElement("span");
+    tag.className = "tag"; tag.textContent = "manual";
+    name.appendChild(tag);
+  }
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = a.source === "plaid"
+    ? [a.institution, a.type, a.mask ? "····" + a.mask : ""].filter(Boolean).join(" · ")
+    : (a.updated ? "updated " + new Date(a.updated).toLocaleDateString() : "");
+  nm.appendChild(name); nm.appendChild(meta);
+
+  const amt = document.createElement("div");
+  amt.className = "amt " + kind;
+  amt.textContent = fmt.format(a.value);
+
+  row.appendChild(nm);
+  if (a.source === "manual") {
+    const edit = document.createElement("button");
+    edit.className = "edit"; edit.textContent = "edit";
+    edit.onclick = () => editManual(a);
+    row.appendChild(edit);
+  }
+  row.appendChild(amt);
+  return row;
+}
+
+// ---- Plaid Link ----
+$("connect").onclick = async () => {
+  const r = await fetch("/api/create_link_token", { method: "POST" });
+  const { link_token, error } = await r.json();
+  if (error) { alert("Could not start Plaid: " + error); return; }
+  const handler = Plaid.create({
+    token: link_token,
+    onSuccess: async (public_token, metadata) => {
+      await fetch("/api/exchange_token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          public_token,
+          institution: metadata.institution ? metadata.institution.name : "Bank",
+        }),
+      });
+      loadData();
+    },
+    // PRODUCTION OAuth note: returning from a bank's OAuth screen requires
+    // re-initializing Link with receivedRedirectUri. See README.
+  });
+  handler.open();
+};
+
+$("refresh").onclick = loadData;
+
+// ---- Manual accounts ----
+$("manualForm").onsubmit = async (e) => {
+  e.preventDefault();
+  await fetch("/api/manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: $("m_id").value || undefined,
+      name: $("m_name").value,
+      kind: $("m_kind").value,
+      value: $("m_value").value,
+    }),
+  });
+  resetForm();
+  loadData();
+};
+
+function editManual(a) {
+  $("m_id").value = a.id;
+  $("m_name").value = a.name;
+  $("m_kind").value = a.kind;
+  $("m_value").value = a.value;
+  $("m_save").textContent = "Update";
+  $("m_cancel").style.display = "inline-block";
+  $("m_name").focus();
+}
+$("m_cancel").onclick = resetForm;
+function resetForm() {
+  $("manualForm").reset();
+  $("m_id").value = "";
+  $("m_save").textContent = "Save";
+  $("m_cancel").style.display = "none";
+}
+
+$("foot").textContent = "Loaded " + new Date().toLocaleString() + " · balances refresh when you reload or press Refresh.";
+loadData();
+</script>
+</body>
+</html>
